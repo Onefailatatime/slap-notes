@@ -15,7 +15,7 @@ replaces=("${_appname}")
 # Electron ships prebuilt binaries: stripping them breaks the bundle.
 options=('!strip' '!debug')
 install="${pkgname}.install"
-source=("${pkgname}-${pkgver}.tar.zst::https://github.com/OWNER/slap-notes/releases/download/${pkgver}/${_appname}-${pkgver}-linux-x64.tar.zst")
+source=("${pkgname}-${pkgver}.tar.zst::https://github.com/Onefailatatime/slap-notes/releases/download/${pkgver}/${_appname}-${pkgver}-linux-x64.tar.zst")
 sha256sums=('10ead249a91b929e5090acf671ebc84601084f6df0e333f1cd55ae953fd93930')
 
 package() {

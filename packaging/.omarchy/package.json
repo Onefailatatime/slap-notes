@@ -1,7 +1,7 @@
 {
   "source": "local",
   "upstream": {
-    "github": "OWNER/slap-notes",
+    "github": "Onefailatatime/slap-notes",
     "checksums": "SHA256SUMS",
     "assets": {
       "x86_64": "slap-notes-{tag}-linux-x64.tar.zst"

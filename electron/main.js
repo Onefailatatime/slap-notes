@@ -118,7 +118,7 @@ function isUp(port) {
 // on the note itself drive the page's own controls, so the menu and the
 // in-app toolbar can never disagree about what an action does.
 
-const REPO = "OWNER/slap-notes"; // ← set to your GitHub owner/repo
+const REPO = "Onefailatatime/slap-notes"; // ← set to your GitHub owner/repo
 const WEBSITE = "https://slapnotes.com";
 const X_HANDLE = "jessyka_boat";
 // Author photo, inlined so the greeting works offline and needs no asset path

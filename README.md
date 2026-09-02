@@ -6,7 +6,7 @@
 
 Local-first. Everything stays on your machine. No account required.
 
-[![Platform](https://img.shields.io/badge/platform-Linux%20x64-1f2937)](https://github.com/OWNER/slap-notes/releases)
+[![Platform](https://img.shields.io/badge/platform-Linux%20x64-1f2937)](https://github.com/Onefailatatime/slap-notes/releases)
 [![Built for](https://img.shields.io/badge/built%20for-Omarchy-a3e635)](https://omarchy.org)
 [![Licence](https://img.shields.io/badge/licence-proprietary-3f3f46)](LICENSE)
 
@@ -35,7 +35,7 @@ graph and answer across it.
 omarchy pkg add slap-notes-bin      # or: yay -S slap-notes-bin
 ```
 
-**Tarball** — grab the latest from [Releases](https://github.com/OWNER/slap-notes/releases), verify, and run:
+**Tarball** — grab the latest from [Releases](https://github.com/Onefailatatime/slap-notes/releases), verify, and run:
 
 ```bash
 sha256sum -c SHA256SUMS
@@ -92,9 +92,33 @@ builds the package, and creates the tagged GitHub release.
 Tag exactly `0.1.2` — no leading `v`. Omarchy's tracker substitutes the tag
 into the asset filename. Full walkthrough in [`SUBMISSION.md`](SUBMISSION.md).
 
-> **First-time setup:** three files carry an `OWNER/slap-notes` placeholder —
+> **First-time setup:** three files carry an `Onefailatatime/slap-notes` placeholder —
 > `electron/main.js`, `packaging/PKGBUILD`, and `packaging/.omarchy/package.json`.
 > Replace all three or release fetches and update checks will not resolve.
+
+## Shipping an update
+
+The build tree is ~500 MB of compiled output and lives outside the repo — on the
+release drive, not in git. Point the script at it and it does the rest:
+
+```bash
+SLAP_BUILD_ROOT=/run/media/$USER/SLAPNOTES/build \
+  ./scripts/publish-release.sh 0.1.2 --push
+```
+
+It finds the usual locations on its own; `SLAP_BUILD_ROOT` is the override.
+
+Users then get the update three ways, in order of how most people will see it:
+
+| Route | What happens |
+|---|---|
+| `omarchy update` / `pacman -Syu` | Package manager pulls the new release |
+| In-app notice | Checked once per launch; a banner appears when a newer tag exists |
+| Help → Check for Updates… | Manual check, any time |
+
+**The release artifact is the product.** The tarball attached to each GitHub
+release is what people install; this repo carries the shell, tooling and
+packaging around it.
 
 ## Privacy
 

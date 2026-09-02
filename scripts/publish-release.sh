@@ -15,13 +15,34 @@ PUSH="${2:-}"
 echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "version must look like 1.2.3" >&2; exit 2; }
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-DRIVE="$(dirname "$HERE")"
-BUILD="$DRIVE/build"
+REPO_ROOT="$(cd "$HERE/.." && pwd)"
+
+# Where the unpacked build tree lives. It is NOT in the repo - it is ~500 MB of
+# compiled output. Set SLAP_BUILD_ROOT, or let this find the usual spots.
+if [ -n "${SLAP_BUILD_ROOT:-}" ]; then
+  BUILD="$SLAP_BUILD_ROOT"
+else
+  for cand in \
+      "$REPO_ROOT/build" \
+      "$(dirname "$HERE")/build" \
+      /run/media/"$USER"/SLAPNOTES/build \
+      /media/"$USER"/SLAPNOTES/build ; do
+    [ -d "$cand" ] && ls -d "$cand"/slap-notes-* >/dev/null 2>&1 && { BUILD="$cand"; break; }
+  done
+fi
+if [ -z "${BUILD:-}" ] || [ ! -d "$BUILD" ]; then
+  echo "Cannot find the build tree." >&2
+  echo "Point at it explicitly:  SLAP_BUILD_ROOT=/path/to/build $0 $VERSION" >&2
+  echo "(It should contain a slap-notes-<version>/ directory.)" >&2
+  exit 2
+fi
+echo "==> build tree: $BUILD"
 TREE="$BUILD/slap-notes-$VERSION"
 OLDTREE="$(ls -d "$BUILD"/slap-notes-* 2>/dev/null | grep -v '\.tar\.zst$' | head -1)"
 TARBALL="slap-notes-$VERSION-linux-x64.tar.zst"
-PKGDIR="$HERE/omarchy-pkgs/pkgbuilds/slap-notes-bin"
+PKGDIR="$REPO_ROOT/packaging"
 REPO="$(grep -oP 'github\.com/\K[^/]+/[^/]+' "$PKGDIR/PKGBUILD" | head -1)"
+OUT="${SLAP_RELEASE_DIR:-$BUILD}"
 
 command -v zstd  >/dev/null || { echo "need zstd"  >&2; exit 2; }
 command -v gh    >/dev/null || [ "$PUSH" != "--push" ] || { echo "need gh for --push" >&2; exit 2; }
@@ -64,7 +85,7 @@ echo "==> packing $TARBALL (zstd -19, takes a minute)"
 ( cd "$BUILD" && tar -I 'zstd -19 -T0' -cf "$TARBALL.tmp" "slap-notes-$VERSION" && mv -f "$TARBALL.tmp" "$TARBALL" )
 SHA="$(cd "$BUILD" && sha256sum "$TARBALL" | cut -d' ' -f1)"
 printf '%s  %s\n' "$SHA" "$TARBALL" > "$BUILD/SHA256SUMS"
-cp -f "$BUILD/$TARBALL" "$BUILD/SHA256SUMS" "$HERE/"
+cp -f "$BUILD/$TARBALL" "$BUILD/SHA256SUMS" "$OUT/" 2>/dev/null || true
 echo "==> sha256: $SHA"
 
 # ---- 6. update the PKGBUILD -------------------------------------------------
@@ -75,9 +96,9 @@ echo "==> PKGBUILD: pkgver=$VERSION pkgrel=1 sha256 updated"
 if command -v makepkg >/dev/null; then
   WORK="$(mktemp -d)"; cp "$PKGDIR/PKGBUILD" "$PKGDIR"/*.install "$WORK/" 2>/dev/null || true
   ( cd "$WORK"
-    sed -i "s|::https://github.com/[^\"]*|::file://$HERE/$TARBALL|" PKGBUILD
+    sed -i "s|::https://github.com/[^\"]*|::file://$BUILD/$TARBALL|" PKGBUILD
     makepkg -f --nodeps --noconfirm >/dev/null 2>&1 ) \
-    && cp "$WORK"/*.pkg.tar.zst "$HERE/" && echo "==> pacman package built" \
+    && cp "$WORK"/*.pkg.tar.zst "$OUT/" && echo "==> pacman package built -> $OUT" \
     || echo "!!  makepkg failed — the tarball is still valid; build the package manually" >&2
   rm -rf "$WORK"
 fi
@@ -89,7 +110,7 @@ if [ "$PUSH" = "--push" ]; then
   esac
   echo "==> creating GitHub release $VERSION on $REPO"
   gh release create "$VERSION" \
-    "$HERE/$TARBALL" "$HERE/SHA256SUMS" \
+    "$BUILD/$TARBALL" "$BUILD/SHA256SUMS" \
     --repo "$REPO" --title "Slap Notes $VERSION" --generate-notes
   echo "==> published: https://github.com/$REPO/releases/tag/$VERSION"
   echo "    Users on the package get it via 'omarchy update'."
@@ -102,7 +123,7 @@ Built, not published. To publish:
   ./publish-release.sh $VERSION --push
 
 Or by hand:
-  gh release create $VERSION $TARBALL SHA256SUMS --title "Slap Notes $VERSION" --generate-notes
+  gh release create $VERSION "$BUILD/$TARBALL" "$BUILD/SHA256SUMS" --title "Slap Notes $VERSION" --generate-notes
 
 The tag must be exactly "$VERSION" — no leading v — or Omarchy's tracker
 looks for the wrong asset filename.

@@ -6,7 +6,7 @@ GitHub owner/repo in two files.
 ```bash
 cd release-0.1.1
 grep -rn OWNER omarchy-pkgs/          # shows both spots
-sed -i 's|OWNER/slap-notes|yourname/slap-notes|' \
+sed -i 's|Onefailatatime/slap-notes|yourname/slap-notes|' \
   omarchy-pkgs/pkgbuilds/slap-notes-bin/PKGBUILD \
   omarchy-pkgs/pkgbuilds/slap-notes-bin/.omarchy/package.json
 ```
@@ -63,7 +63,7 @@ gh release create 0.1.1 \
 Sanity check that the PKGBUILD's URL resolves before you open the PR:
 
 ```bash
-curl -sIL https://github.com/OWNER/slap-notes/releases/download/0.1.1/slap-notes-0.1.1-linux-x64.tar.zst | head -1
+curl -sIL https://github.com/Onefailatatime/slap-notes/releases/download/0.1.1/slap-notes-0.1.1-linux-x64.tar.zst | head -1
 ```
 
 ## Step 2 — Open the PR against omarchy-pkgs
