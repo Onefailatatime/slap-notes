@@ -16,7 +16,7 @@ replaces=("${_appname}")
 options=('!strip' '!debug')
 install="${pkgname}.install"
 source=("${pkgname}-${pkgver}.tar.zst::https://github.com/OWNER/slap-notes/releases/download/${pkgver}/${_appname}-${pkgver}-linux-x64.tar.zst")
-sha256sums=('4f39800e0a2f2f62760868f1cda9af872881dff23553d8b8667f0993fe254199')
+sha256sums=('0118d30422dce961958adf11525a925021bccc031cb463963650a60801156e8d')
 
 package() {
   cd "${srcdir}/${_appname}-${pkgver}"

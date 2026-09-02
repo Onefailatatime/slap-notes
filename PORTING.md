@@ -114,18 +114,20 @@ blocks: blocks.map(b => ({ id: newId(), text: "", ...b }))
 Keep that default in source. Better still, make `text` non-optional on the
 block type so the compiler catches it.
 
-## 6 · In-app update notice
+## 6 · Update notice — already existed, now runs on launch
 
-A self-contained IIFE appended to the page chunk (deliberately not React, so it
-cannot break the tree). Four seconds after load it polls
-`api.github.com/repos/<owner>/slap-notes/releases/latest`, compares `tag_name`
-to a stamped `__SLAP_VERSION`, and shows a dismissible banner pointing at
-`omarchy update` / `pacman -Syu`. Fails silently; stays inert while the repo is
-still `OWNER/`. Dismissal is remembered per-version in
-`slap-notes:update-dismissed`.
+**This one is already in source.** `electron/main.js` shipped with a complete
+`checkForUpdates()` — it polls `api.github.com/repos/<REPO>/releases/latest`,
+uses `app.getVersion()`, handles timeouts and non-200s, and was wired to
+**Help → Check for Updates…**. It was only ever manual.
 
-In source this should be a small client component with the version read from
-`package.json` at build time.
+The single change: `createWindow()` now runs it once, eight seconds after
+`did-finish-load`, and surfaces the existing UI only when there is genuinely a
+newer release. Nothing needs version-stamping.
+
+`const REPO = "OWNER/slap-notes"` at `electron/main.js:105` is the **fourth**
+place the placeholder must be replaced, alongside the PKGBUILD, the Omarchy
+package manifest, and the built page chunk.
 
 ## 7 · Build hygiene — mostly disappears in source
 
