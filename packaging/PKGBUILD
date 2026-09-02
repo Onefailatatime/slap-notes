@@ -16,7 +16,7 @@ replaces=("${_appname}")
 options=('!strip' '!debug')
 install="${pkgname}.install"
 source=("${pkgname}-${pkgver}.tar.zst::https://github.com/Onefailatatime/slap-notes/releases/download/${pkgver}/${_appname}-${pkgver}-linux-x64.tar.zst")
-sha256sums=('7480bcf5b6f4a57e18daf950acdffc79a5ab02a7bc86e3c3ac5c0d0591f021ca')
+sha256sums=('c85c873ad0c59c2f9e28c93ef305da69ee87c8d932fe6fc41c620308fcf3b4e9')
 
 package() {
   cd "${srcdir}/${_appname}-${pkgver}"
