@@ -125,9 +125,10 @@ The single change: `createWindow()` now runs it once, eight seconds after
 `did-finish-load`, and surfaces the existing UI only when there is genuinely a
 newer release. Nothing needs version-stamping.
 
-`const REPO = "OWNER/slap-notes"` at `electron/main.js:105` is the **fourth**
-place the placeholder must be replaced, alongside the PKGBUILD, the Omarchy
-package manifest, and the built page chunk.
+`const REPO = "OWNER/slap-notes"` at `electron/main.js:105` is one of **three**
+places the placeholder must be replaced, alongside the PKGBUILD and the Omarchy
+package manifest. It is the one that is easy to miss, because it lives inside
+`app.asar` in a shipped build.
 
 ## 7 · Build hygiene — mostly disappears in source
 

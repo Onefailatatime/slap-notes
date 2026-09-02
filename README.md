@@ -70,9 +70,8 @@ npm run app:dist:linux:docker  # reproducible Linux build in Docker
 Tag exactly `0.1.2`, no leading `v` — Omarchy's tracker substitutes the tag
 into the asset filename. See `SUBMISSION.md`.
 
-Four files still contain the `OWNER/slap-notes` placeholder and need the real
-repo: `electron/main.js:105`, `packaging/PKGBUILD`, `packaging/.omarchy/package.json`,
-and the built page chunk.
+Three files still contain the `OWNER/slap-notes` placeholder and need the real
+repo: `electron/main.js`, `packaging/PKGBUILD`, and `packaging/.omarchy/package.json`.
 
 ## Licence
 
