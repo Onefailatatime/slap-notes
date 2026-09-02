@@ -1,0 +1,11 @@
+{
+  "source": "local",
+  "upstream": {
+    "github": "OWNER/slap-notes",
+    "checksums": "SHA256SUMS",
+    "assets": {
+      "x86_64": "slap-notes-{tag}-linux-x64.tar.zst"
+    }
+  },
+  "min_release_age": "24h"
+}

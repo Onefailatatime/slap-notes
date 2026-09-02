@@ -1,0 +1,9 @@
+node_modules/
+.next/
+dist/
+out/
+*.tar.zst
+*.pkg.tar.zst
+*.AppImage
+.env*
+.DS_Store

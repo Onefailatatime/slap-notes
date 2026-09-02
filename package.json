@@ -1,0 +1,113 @@
+{
+  "name": "slap-notes",
+  "version": "0.1.1",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "app:build": "next build && node scripts/prepare-standalone.mjs",
+    "electron": "electron .",
+    "app:pack": "npm run app:build && electron-builder --dir",
+    "app:dist": "npm run app:build && electron-builder",
+    "app:dist:linux": "npm run app:build && electron-builder --linux",
+    "app:dist:linux:docker": "npm run app:build && bash scripts/build-linux-docker.sh"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.98.0",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
+    "@floating-ui/react": "^0.27.19",
+    "clsx": "^2.1.1",
+    "date-fns": "^4.3.0",
+    "dexie": "^4.4.3",
+    "dompurify": "^3.4.7",
+    "katex": "^0.17.0",
+    "lucide-react": "^0.469.0",
+    "minisearch": "^7.2.0",
+    "nanoid": "^5.1.11",
+    "next": "^15.1.4",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "shiki": "^4.1.0",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.16",
+    "@types/katex": "^0.16.8",
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "autoprefixer": "^10.4.20",
+    "electron": "^38.8.6",
+    "electron-builder": "^26.15.3",
+    "eslint": "^9.18.0",
+    "eslint-config-next": "^15.1.4",
+    "postcss": "^8.5.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3"
+  },
+  "build": {
+    "appId": "app.funnelfix.slapnotes",
+    "productName": "Slap Notes",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".next/standalone",
+        "to": "app-server"
+      }
+    ],
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Office",
+      "synopsis": "Local-first block notes with a wiki-link graph and an AI research agent",
+      "description": "Slap Notes is a block-based second brain: a Notion-style editor fused with an Obsidian-style link graph (the Cluster Brain) and a built-in AI research agent. Local-first - everything stays on your machine, no account required.",
+      "maintainer": "FunnelFix <linda@sayhellotolinda.com>",
+      "target": [
+        {
+          "target": "pacman",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "desktop": {
+        "entry": {
+          "Name": "Slap Notes",
+          "Comment": "Your second brain",
+          "Categories": "Office;Utility;TextEditor;",
+          "Keywords": "notes;pkm;markdown;graph;second brain;wiki;",
+          "StartupWMClass": "Slap Notes",
+          "StartupNotify": "true"
+        }
+      }
+    },
+    "pacman": {
+      "depends": [
+        "gtk3",
+        "nss",
+        "alsa-lib",
+        "libxss",
+        "libnotify"
+      ]
+    }
+  }
+}
