@@ -54,14 +54,11 @@ if [ ! -d "$TREE" ]; then
   mv "$OLDTREE" "$TREE"
 fi
 
-# ---- 2. stamp the version into the in-app update checker ---------------------
-CHUNK="$(ls "$TREE"/app/resources/app-server/.next/static/chunks/app/page-*.js | head -1)"
-if grep -q '__SLAP_VERSION' "$CHUNK"; then
-  sed -i -E 's/var CUR="[0-9]+\.[0-9]+\.[0-9]+";( *\/\* __SLAP_VERSION \*\/)/var CUR="'"$VERSION"'";\1/' "$CHUNK"
-  echo "==> stamped in-app version: $(grep -oP 'var CUR="\K[^"]+' "$CHUNK" | head -1)"
-else
-  echo "!!  update-checker marker not found in $(basename "$CHUNK") — in-app notice will report a stale version" >&2
-fi
+# ---- 2. stamp the version the app reports ----------------------------------
+# app.getVersion() reads package.json from inside app.asar, so this is what the
+# update check compares against. Bump it or the release lies about itself.
+echo "==> stamping version into app.asar"
+python3 "$HERE/bump-asar-version.py" "$TREE/app/resources/app.asar" "$VERSION"
 
 # ---- 3. re-hash the page chunk so caches can't serve stale code --------------
 NEWHASH="page-$(sha256sum "$CHUNK" | cut -c1-16)"
