@@ -41,7 +41,7 @@ TREE="$BUILD/slap-notes-$VERSION"
 OLDTREE="$(ls -d "$BUILD"/slap-notes-* 2>/dev/null | grep -v '\.tar\.zst$' | head -1)"
 TARBALL="slap-notes-$VERSION-linux-x64.tar.zst"
 PKGDIR="$REPO_ROOT/packaging"
-REPO="$(grep -oP 'github\.com/\K[^/]+/[^/]+' "$PKGDIR/PKGBUILD" | head -1)"
+REPO="$( { grep -oP 'github\.com/\K[^/]+/[^/]+' "$PKGDIR/PKGBUILD" || true; } | head -1 )"
 OUT="${SLAP_RELEASE_DIR:-$BUILD}"
 
 command -v zstd  >/dev/null || { echo "need zstd"  >&2; exit 2; }
@@ -76,7 +76,9 @@ fi
 
 # ---- 4. strip anything that must never ship ---------------------------------
 find "$TREE" \( -name '*.bak*' -o -name '*.orig' -o -name '*.pre*' -o -name '.env*' \) -delete 2>/dev/null || true
-LEAK=$(grep -rlE 'sk-ant-[A-Za-z0-9]{15}|sk-proj-[A-Za-z0-9]{15}|AIza[A-Za-z0-9_-]{30}|gsk_[A-Za-z0-9]{25}' "$TREE" 2>/dev/null | wc -l)
+# grep exits 1 when it finds nothing - which is the case we want - and pipefail
+# would treat that as a failure, so swallow it deliberately.
+LEAK=$( { grep -rlE 'sk-ant-[A-Za-z0-9]{15}|sk-proj-[A-Za-z0-9]{15}|AIza[A-Za-z0-9_-]{30}|gsk_[A-Za-z0-9]{25}' "$TREE" 2>/dev/null || true; } | wc -l )
 [ "$LEAK" = "0" ] || { echo "ABORT: $LEAK file(s) look like they contain an API key" >&2; exit 1; }
 echo "==> secret scan clean"
 
