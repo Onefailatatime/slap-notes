@@ -78,6 +78,21 @@ function createWindow() {
   });
   win.loadURL(LOADING_HTML);
   win.once("ready-to-show", () => win.show());
+
+  // Check once per launch, quietly. The Help menu can still be used to check on
+  // demand; this only speaks up when there is actually something newer, so a
+  // user who never opens the menu still hears about releases.
+  win.webContents.once("did-finish-load", () => {
+    setTimeout(() => {
+      checkForUpdates()
+        .then((r) => {
+          if (r && r.status === "update") {
+            runInPage("window.__slapMenuUI && window.__slapMenuUI.updates()");
+          }
+        })
+        .catch(() => {});
+    }, 8000);
+  });
   // Open external links in the user's browser, keep app links in-app.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("http://127.0.0.1")) return { action: "allow" };
