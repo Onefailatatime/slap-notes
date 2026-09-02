@@ -1,80 +1,118 @@
+<div align="center">
+
 # Slap Notes
 
-Local-first block notes with a wiki-link graph (the Cluster Brain) and a
-built-in AI research agent. Next.js in an Electron shell, packaged for Arch /
-Omarchy.
+**Your second brain — a block editor fused with a linked-note graph and a built-in AI researcher.**
 
-> **State of this repo:** partial. The Electron shell, the build config, the QA
-> suite and the packaging pipeline are here and real. **The Next.js app itself
-> is not** — see *What's missing* below before you try to build.
+Local-first. Everything stays on your machine. No account required.
 
-## What's here
+[![Platform](https://img.shields.io/badge/platform-Linux%20x64-1f2937)](https://github.com/OWNER/slap-notes/releases)
+[![Built for](https://img.shields.io/badge/built%20for-Omarchy-a3e635)](https://omarchy.org)
+[![Licence](https://img.shields.io/badge/licence-proprietary-3f3f46)](LICENSE)
 
-| Path | What it is |
+</div>
+
+---
+
+## What it is
+
+Slap Notes is a Notion-style block editor married to an Obsidian-style link
+graph — the **Cluster Brain** — with an AI research agent that can read that
+graph and answer across it.
+
+- **Blocks & markdown shortcuts** — headings, lists, to-dos, quotes, callouts, code, tables, images, video, dividers
+- **Wiki links** — type `[[` to connect notes; every link becomes a graph edge
+- **Cluster Brain** — the whole vault as a network you can walk
+- **AI Research** — summarise, find connections, or draft notes. Reads **only your notes** by default, with a one-click *Expand this topic* to go wider
+- **Bring your own key** — Anthropic, OpenAI, Google, Groq, or OpenRouter. Nothing is proxied; the key is stored on your device and sent straight to the local server
+- **Own your data** — Markdown, HTML, JSON and PDF export; a `workspace.json` mirror on disk; full backup and restore
+
+## Install
+
+**Omarchy / Arch**
+
+```bash
+omarchy pkg add slap-notes-bin      # or: yay -S slap-notes-bin
+```
+
+**Tarball** — grab the latest from [Releases](https://github.com/OWNER/slap-notes/releases), verify, and run:
+
+```bash
+sha256sum -c SHA256SUMS
+tar --zstd -xf slap-notes-*-linux-x64.tar.zst
+./slap-notes-*/app/slap-notes
+```
+
+Runtime deps: `gtk3 nss alsa-lib libxss libnotify`.
+
+## Repository status
+
+This repo currently holds the **Electron shell, build configuration, QA suite
+and release tooling**. The Next.js application under `app/` is not yet in
+version control — the shipped 0.1.1 binaries are ahead of this tree, and
+[`PORTING.md`](PORTING.md) is the authoritative record of every difference.
+
+Practically: **`npm run build` will not work until `app/` is added.** The
+released binaries are complete and working; this repo is the packaging and
+tooling half, with the application half still to land.
+
+| Path | |
 |---|---|
-| `electron/main.js` | The Electron main process. 414 lines, original comments intact. Fixed port 39741 so the loopback origin — and therefore localStorage and IndexedDB — stays stable across launches. |
-| `electron/preload.js` | Preload bridge. |
-| `package.json` | The real project manifest: 19 deps, 13 dev deps, electron-builder config. Linux only — the macOS target has been removed. |
-| `qa/` | CDP-driven QA sweep. Drives a real window with trusted input, against a throwaway profile. Covers the editor, linking, and data layers. |
-| `packaging/` | `PKGBUILD`, install hook, and the Omarchy package manifest. |
-| `scripts/publish-release.sh` | One-command release: repack, stamp version, re-hash chunks, secret-scan, checksum, build the package, and publish the GitHub release. |
-| `PORTING.md` | **Read this.** Every change made to the shipped 0.1.1 binaries that is not represented in this repo. |
+| `electron/` | Main process and preload bridge. Fixed port 39741 keeps the loopback origin stable, so localStorage and IndexedDB survive restarts. |
+| `qa/` | CDP-driven QA sweep — trusted input against a throwaway profile. Covers the editor, linking and data layers. |
+| `packaging/` | PKGBUILD, install hook, Omarchy package manifest. |
+| `scripts/publish-release.sh` | One-command release. |
+| `PORTING.md` | Everything in the shipped binary that is not yet in this tree. |
+| `package.json` | Full manifest — deps and electron-builder config, Linux targets only. |
 
-## What's missing
-
-Everything under `app/` — the editor, block model, Cluster Brain graph, AI
-panel, settings, and the `/api/ai` and `/api/notes` routes. Also
-`scripts/prepare-standalone.mjs` and `scripts/build-linux-docker.sh`, both
-referenced by `package.json`.
-
-Those exist only as compiled output inside the shipped bundles. They were
-recovered from a packaged build, and Next.js standalone output keeps
-`package.json`, `node_modules`, `server.js` and `.next/` — but no source.
-
-**`npm run build` will not work until `app/` is restored.**
-
-## Restoring it
-
-1. **Find the original tree.** The shipped bundles record their build path as
-   `/build/slap-notes` — that's the path *inside the Docker container* used by
-   `app:dist:linux:docker`, mounted from a real checkout. Look on whichever
-   machine runs that script.
-2. **Drop it in.** This repo is laid out to match, so a recovered `app/`
-   should slot straight in.
-3. **Re-apply `PORTING.md`.** The shipped 0.1.1 binary is ahead of any source
-   you find — multi-provider AI keys, notes-only research with an opt-in
-   expand, URL-backed images and YouTube embeds, four seeded notes, and the
-   update checker all live only in the binary.
-
-If the tree is genuinely gone, `PORTING.md` plus this shell is the honest
-starting point for a rebuild, and the shipped bundles remain a working
-reference for behaviour.
-
-## Building (once `app/` is back)
+## Development
 
 ```bash
 npm install
 npm run dev                    # Next dev server
 npm run electron               # Electron against it
-npm run app:dist:linux         # pacman + AppImage
-npm run app:dist:linux:docker  # reproducible Linux build in Docker
+npm run typecheck && npm run lint
+./qa/run.sh                    # QA sweep (quit the app first)
 ```
 
-## Releasing
+## Building & releasing
 
 ```bash
-./scripts/publish-release.sh 0.1.2           # build only
-./scripts/publish-release.sh 0.1.2 --push    # build and publish
+npm run app:dist:linux         # pacman + AppImage
+npm run app:dist:linux:docker  # reproducible Linux build in Docker
+
+./scripts/publish-release.sh 0.1.2 --push
 ```
 
-Tag exactly `0.1.2`, no leading `v` — Omarchy's tracker substitutes the tag
-into the asset filename. See `SUBMISSION.md`.
+`publish-release.sh` repacks the tree, stamps the version, re-hashes the page
+chunk so no cache serves stale code, refuses to continue if anything resembling
+an API key is present, writes the checksum into `SHA256SUMS` and the PKGBUILD,
+builds the package, and creates the tagged GitHub release.
 
-Three files still contain the `OWNER/slap-notes` placeholder and need the real
-repo: `electron/main.js`, `packaging/PKGBUILD`, and `packaging/.omarchy/package.json`.
+Tag exactly `0.1.2` — no leading `v`. Omarchy's tracker substitutes the tag
+into the asset filename. Full walkthrough in [`SUBMISSION.md`](SUBMISSION.md).
+
+> **First-time setup:** three files carry an `OWNER/slap-notes` placeholder —
+> `electron/main.js`, `packaging/PKGBUILD`, and `packaging/.omarchy/package.json`.
+> Replace all three or release fetches and update checks will not resolve.
+
+## Privacy
+
+Notes never leave your machine. Three things do reach the network, all optional
+and all disclosed:
+
+- **AI Research** — only when you use it, only to the provider whose key you supplied
+- **Update check** — once per launch, to the GitHub releases API
+- **Seeded example notes** — embed Wikimedia images and YouTube (via `youtube-nocookie.com`); delete them and nothing is requested
 
 ## Licence
 
-Proprietary — see `LICENSE`. Ships Electron and Chromium under their own
-licences; seeded notes embed Wikimedia images under CC BY-SA with in-app
-attribution.
+Proprietary — see [`LICENSE`](LICENSE). Ships Electron and Chromium under their
+own licences. Seeded notes embed Wikimedia Commons images under CC BY-SA with
+in-app attribution.
+
+---
+
+<div align="center">
+Built by <a href="https://x.com/jessyka_boat">@jessyka_boat</a> · Shared on Omarchy, inspired by <a href="https://x.com/dhh">@dhh</a>
+</div>
