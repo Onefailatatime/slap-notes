@@ -61,6 +61,9 @@ echo "==> stamping version into app.asar"
 python3 "$HERE/bump-asar-version.py" "$TREE/app/resources/app.asar" "$VERSION"
 
 # ---- 3. re-hash the page chunk so caches can't serve stale code --------------
+# Next serves chunks immutable for a year. If the bytes changed but the filename
+# did not, upgrading users keep executing the old code.
+CHUNK="$(ls "$TREE"/app/resources/app-server/.next/static/chunks/app/page-*.js | head -1)"
 NEWHASH="page-$(sha256sum "$CHUNK" | cut -c1-16)"
 OLDNAME="$(basename "$CHUNK" .js)"
 if [ "$NEWHASH" != "$OLDNAME" ]; then
