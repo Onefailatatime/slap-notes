@@ -7,7 +7,7 @@ const ACTIONS = new Set([
   "reload", "devtools",
   "zoom-in", "zoom-out", "zoom-reset",
   "cut", "copy", "paste", "select-all",
-  "updates", "release-page", "notes-folder", "website", "issues", "diagnostics",
+  "updates", "install-update", "release-page", "notes-folder", "website", "issues", "diagnostics",
 ]);
 
 contextBridge.exposeInMainWorld("slapShell", {

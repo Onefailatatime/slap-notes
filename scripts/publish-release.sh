@@ -111,8 +111,11 @@ if [ "$PUSH" = "--push" ]; then
     OWNER/*) echo "ABORT: PKGBUILD still points at OWNER/. Set your real repo first (see SUBMISSION.md)." >&2; exit 1;;
   esac
   echo "==> creating GitHub release $VERSION on $REPO"
+  # the .pkg.tar.zst must be attached: it is what in-app "Update now" installs
+  PKGFILE="$(ls "$OUT"/slap-notes-bin-"$VERSION"-*.pkg.tar.zst 2>/dev/null | head -1 || true)"
+  [ -n "$PKGFILE" ] && sha256sum "$PKGFILE" | sed "s|$(dirname "$PKGFILE")/||" >> "$BUILD/SHA256SUMS"
   gh release create "$VERSION" \
-    "$BUILD/$TARBALL" "$BUILD/SHA256SUMS" \
+    "$BUILD/$TARBALL" "$BUILD/SHA256SUMS" ${PKGFILE:+"$PKGFILE"} \
     --repo "$REPO" --title "Slap Notes $VERSION" --generate-notes
   echo "==> published: https://github.com/$REPO/releases/tag/$VERSION"
   echo "    Users on the package get it via 'omarchy update'."

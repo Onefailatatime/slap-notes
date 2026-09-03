@@ -3,6 +3,9 @@ const { spawn } = require("child_process");
 const path = require("path");
 const http = require("http");
 const https = require("https");
+const fs = require("fs");
+const os = require("os");
+const crypto = require("crypto");
 
 // Fixed port so the loopback origin (and therefore localStorage / IndexedDB)
 // stays stable across launches — otherwise the local-first data would reset
@@ -88,7 +91,7 @@ function createWindow() {
       checkForUpdates()
         .then((r) => {
           if (r && r.status === "update") {
-            runInPage("window.__slapMenuUI && window.__slapMenuUI.updates()");
+            showUpdateBanner(r.latest, lastReleaseUrl || WEBSITE);
           }
         })
         .catch(() => {});
@@ -190,6 +193,191 @@ let lastReleaseUrl = null;
 // Shown once, on first launch only. Injected from the main process so it does
 // not depend on the renderer bundle, and dismissed state lives in the page's
 // own localStorage.
+// ---------------------------------------------------------------------------
+// One-click update.
+//
+// The app installs to /opt via pacman, which is root-owned, so applying an
+// update needs elevation. pkexec raises exactly one polkit prompt and pacman -U
+// keeps the package database honest, so the system does not end up with files
+// pacman does not know about. There is no way to avoid the prompt for a
+// system-installed package - an AppImage build is the passwordless route.
+// ---------------------------------------------------------------------------
+
+function installKind() {
+  if (process.env.APPIMAGE) return "appimage";
+  return process.execPath.startsWith("/opt/") ? "pacman" : "other";
+}
+
+function httpsGetFollow(url, onResponse, onError) {
+  const req = https.get(
+    url,
+    { headers: { "User-Agent": "slap-notes/" + app.getVersion(), Accept: "application/octet-stream" } },
+    (res) => {
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();                       // GitHub redirects release assets to a CDN
+        return httpsGetFollow(res.headers.location, onResponse, onError);
+      }
+      onResponse(res);
+    }
+  );
+  req.on("error", onError);
+  req.setTimeout(120000, () => req.destroy(new Error("the download timed out")));
+}
+
+function downloadTo(url, dest, onProgress) {
+  return new Promise((resolve, reject) => {
+    httpsGetFollow(
+      url,
+      (res) => {
+        if (res.statusCode !== 200) {
+          res.resume();
+          return reject(new Error("GitHub replied " + res.statusCode));
+        }
+        const total = parseInt(res.headers["content-length"] || "0", 10);
+        let seen = 0;
+        const file = fs.createWriteStream(dest);
+        res.on("data", (c) => {
+          seen += c.length;
+          if (total) onProgress(seen / total);
+        });
+        res.pipe(file);
+        file.on("finish", () => file.close(() => resolve()));
+        file.on("error", reject);
+      },
+      reject
+    );
+  });
+}
+
+function sha256Of(file) {
+  return new Promise((resolve, reject) => {
+    const h = crypto.createHash("sha256");
+    fs.createReadStream(file)
+      .on("data", (d) => h.update(d))
+      .on("end", () => resolve(h.digest("hex")))
+      .on("error", reject);
+  });
+}
+
+function fetchText(url) {
+  return new Promise((resolve, reject) => {
+    httpsGetFollow(
+      url,
+      (res) => {
+        let b = "";
+        res.setEncoding("utf8");
+        res.on("data", (c) => (b += c));
+        res.on("end", () => resolve(b));
+      },
+      reject
+    );
+  });
+}
+
+function progress(pct, label) {
+  runInPage(
+    "window.__slapUpdateProgress && window.__slapUpdateProgress(" +
+      JSON.stringify(pct) + "," + JSON.stringify(label) + ")"
+  );
+}
+
+async function downloadAndInstallUpdate() {
+  const kind = installKind();
+  if (kind !== "pacman") {
+    // Nothing safe to do automatically; send them to the release instead.
+    shell.openExternal(lastReleaseUrl || WEBSITE);
+    return { status: "manual", reason: kind };
+  }
+
+  try {
+    progress(0, "Looking for the latest release…");
+    const meta = JSON.parse(await fetchText("https://api.github.com/repos/" + REPO + "/releases/latest"));
+    const assets = meta.assets || [];
+    const pkg = assets.find((a) => /\.pkg\.tar\.zst$/.test(a.name));
+    const sums = assets.find((a) => a.name === "SHA256SUMS");
+    if (!pkg) return { status: "error", detail: "This release has no Arch package attached." };
+
+    const dest = path.join(os.tmpdir(), pkg.name);
+    progress(0, "Downloading " + (meta.tag_name || "") + "…");
+    await downloadTo(pkg.browser_download_url, dest, (f) => progress(f, "Downloading…"));
+
+    // Verify before handing anything to pacman.
+    if (sums) {
+      progress(1, "Verifying…");
+      const text = await fetchText(sums.browser_download_url);
+      const line = text.split("\n").find((l) => l.includes(pkg.name));
+      if (line) {
+        const want = line.trim().split(/\s+/)[0];
+        const got = await sha256Of(dest);
+        if (want !== got) {
+          fs.unlinkSync(dest);
+          return { status: "error", detail: "Checksum did not match. Download discarded." };
+        }
+      }
+    }
+
+    progress(1, "Installing — approve the password prompt…");
+    const ok = await new Promise((resolve) => {
+      const p = spawn("pkexec", ["pacman", "-U", "--noconfirm", dest], { stdio: "ignore" });
+      p.on("close", (code) => resolve(code === 0));
+      p.on("error", () => resolve(false));
+    });
+    try { fs.unlinkSync(dest); } catch (e) {}
+    if (!ok) return { status: "error", detail: "Install was cancelled or failed." };
+
+    progress(1, "Restarting…");
+    setTimeout(() => { app.relaunch(); app.exit(0); }, 600);
+    return { status: "installed" };
+  } catch (err) {
+    return { status: "error", detail: String((err && err.message) || err) };
+  }
+}
+
+// The update prompt. Injected rather than built into the renderer bundle so it
+// stays in the main process alongside the code that actually performs the
+// update, and cannot be broken by a change to the app's own UI.
+function showUpdateBanner(latest, url) {
+  const d = { latest: latest, url: url, current: app.getVersion(), canInstall: installKind() === "pacman" };
+  runInPage(
+    "(function(d){" +
+    "if(document.querySelector('[data-slap-update]'))return;" +
+    "var css='position:fixed;left:16px;bottom:16px;z-index:9999;width:330px;background:#18181b;color:#e4e4e7;" +
+      "border:1px solid #3f3f46;border-left:3px solid #a3e635;border-radius:10px;padding:13px 15px;" +
+      "font:13px/1.5 system-ui,-apple-system,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.5)';" +
+    "var b=document.createElement('div');b.setAttribute('data-slap-update','');b.style.cssText=css;" +
+    "var sub=d.canInstall?'Download and install it now.':'Open the release to update.';" +
+    "b.innerHTML='<div style=\"font-weight:600;color:#a3e635\">Slap Notes '+d.latest+' is out</div>'+" +
+      "'<div style=\"color:#a1a1aa;margin:3px 0 10px\">You have '+d.current+'. '+sub+'</div>'+" +
+      "'<div data-bar style=\"display:none;height:5px;background:#27272a;border-radius:3px;overflow:hidden;margin-bottom:9px\">'+" +
+        "'<div data-fill style=\"height:100%;width:0;background:#a3e635;transition:width .2s\"></div></div>'+" +
+      "'<div data-msg style=\"display:none;color:#a1a1aa;margin-bottom:9px\"></div>'+" +
+      "'<div data-actions style=\"display:flex;align-items:center;gap:9px\">'+" +
+        "'<button data-go type=\"button\" style=\"background:#a3e635;color:#0a0a0a;border:0;border-radius:7px;" +
+          "padding:6px 13px;font:inherit;font-weight:700;cursor:pointer\">'+(d.canInstall?'Update now':'Open release')+'</button>'+" +
+        "'<a href=\"'+d.url+'\" target=\"_blank\" rel=\"noreferrer noopener\" style=\"color:#a3e635;text-decoration:none\">What\\'s new</a>'+" +
+        "'<button data-later type=\"button\" style=\"margin-left:auto;background:none;border:0;color:#71717a;cursor:pointer;font:inherit\">Later</button>'+" +
+      "'</div>';" +
+    "var bar=b.querySelector('[data-bar]'),fill=b.querySelector('[data-fill]'),msg=b.querySelector('[data-msg]');" +
+    "window.__slapUpdateProgress=function(pct,label){" +
+      "bar.style.display='block';msg.style.display='block';" +
+      "fill.style.width=Math.round((pct||0)*100)+'%';msg.textContent=label||'';};" +
+    "b.querySelector('[data-later]').onclick=function(){" +
+      "try{localStorage.setItem('slap-notes:update-dismissed',d.latest);}catch(e){}b.remove();};" +
+    "b.querySelector('[data-go]').onclick=function(){" +
+      "var go=b.querySelector('[data-go]');go.disabled=true;go.style.opacity=.6;go.textContent='Working…';" +
+      "b.querySelector('[data-later]').remove();" +
+      "window.slapShell.run('install-update').then(function(r){" +
+        "if(!r||r.status==='installed')return;" +
+        "if(r.status==='manual'){b.remove();return;}" +
+        "go.disabled=false;go.style.opacity=1;go.textContent='Try again';" +
+        "msg.style.display='block';msg.textContent=(r.detail||'Update failed.');" +
+      "}).catch(function(){go.disabled=false;go.style.opacity=1;go.textContent='Try again';});};" +
+    "try{if(localStorage.getItem('slap-notes:update-dismissed')===d.latest)return;}catch(e){}" +
+    "(document.body||document.documentElement).appendChild(b);" +
+    "})(" + JSON.stringify(d) + ");"
+  );
+}
+
 function showWelcomeOnce() {
   const payload = {
     avatar: AUTHOR_AVATAR,
@@ -306,6 +494,7 @@ ipcMain.handle("slap:shell", (event, action) => {
     case "paste": wc.paste(); return true;
     case "select-all": wc.selectAll(); return true;
     case "updates": return checkForUpdates();
+    case "install-update": return downloadAndInstallUpdate();
     case "release-page":
       shell.openExternal(lastReleaseUrl || WEBSITE);
       return true;
