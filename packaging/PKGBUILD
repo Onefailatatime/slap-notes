@@ -2,7 +2,7 @@
 
 pkgname=slap-notes-bin
 _appname=slap-notes
-pkgver=0.1.4
+pkgver=0.1.5
 pkgrel=1
 pkgdesc="Local-first block notes with a wiki-link graph (the Cluster Brain) and a built-in AI research agent"
 arch=('x86_64')
@@ -16,7 +16,7 @@ replaces=("${_appname}")
 options=('!strip' '!debug')
 install="${pkgname}.install"
 source=("${pkgname}-${pkgver}.tar.zst::https://github.com/Onefailatatime/slap-notes/releases/download/${pkgver}/${_appname}-${pkgver}-linux-x64.tar.zst")
-sha256sums=('c5c5e13ae6637f2d8f14b7280bfec36f72e1fb6acd3f056a985e24298eb7e1a5')
+sha256sums=('6094cadbd3a47f2dee5ca06b44806f7198ebae3d732ae4bbfce496567968af5c')
 
 package() {
   cd "${srcdir}/${_appname}-${pkgver}"
