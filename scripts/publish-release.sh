@@ -54,11 +54,12 @@ if [ ! -d "$TREE" ]; then
   mv "$OLDTREE" "$TREE"
 fi
 
-# ---- 2. stamp the version the app reports ----------------------------------
-# app.getVersion() reads package.json from inside app.asar, so this is what the
-# update check compares against. Bump it or the release lies about itself.
-echo "==> stamping version into app.asar"
-python3 "$HERE/bump-asar-version.py" "$TREE/app/resources/app.asar" "$VERSION"
+# ---- 2. put the repo's Electron shell into the build tree -------------------
+# The build tree only supplies compiled Next output; electron/ comes from the
+# repo. Skipping this ships whatever shell was last baked in, so repo edits
+# never reach users. Also sets the version app.getVersion() reports.
+echo "==> syncing electron/ from the repo into app.asar"
+python3 "$HERE/sync-asar.py" "$REPO_ROOT" "$TREE/app/resources/app.asar" "$VERSION"
 
 # ---- 3. re-hash the page chunk so caches can't serve stale code --------------
 # Next serves chunks immutable for a year. If the bytes changed but the filename
