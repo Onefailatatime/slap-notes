@@ -266,6 +266,24 @@ async function selfUpdatePortable(meta) {
   if (!fs.existsSync(next)) return { status: "error", detail: "Unpacked build looks wrong." };
   try { fs.chmodSync(next, 0o755); } catch (e) {}
 
+  // Repoint "current" so the desktop entry and the launcher keep working: they
+  // go through the symlink, not a versioned path that changes every release.
+  try {
+    const link = path.join(root, "current");
+    if (fs.existsSync(link) || fs.lstatSync(link, { throwIfNoEntry: false })) fs.unlinkSync(link);
+    fs.symlinkSync("slap-notes-" + latest, link, "dir");
+  } catch (e) {}
+
+  // Keep only the version we came from, so the folder does not grow forever.
+  try {
+    const here = path.basename(path.dirname(path.dirname(process.execPath)));
+    for (const d of fs.readdirSync(root)) {
+      if (/^slap-notes-\d/.test(d) && d !== here && d !== "slap-notes-" + latest) {
+        fs.rmSync(path.join(root, d), { recursive: true, force: true });
+      }
+    }
+  } catch (e) {}
+
   progress(1, "Restarting…");
   setTimeout(() => { app.relaunch({ execPath: next }); app.exit(0); }, 600);
   return { status: "installed" };
