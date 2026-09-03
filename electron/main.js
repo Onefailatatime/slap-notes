@@ -203,9 +203,72 @@ let lastReleaseUrl = null;
 // system-installed package - an AppImage build is the passwordless route.
 // ---------------------------------------------------------------------------
 
+// Where we are installed decides how - and whether - we can update ourselves.
+//   portable : running from a directory the user owns. We can drop the new
+//              version alongside and relaunch into it. No elevation, one click.
+//   pacman   : /opt is root-owned. pkexec, one password prompt. Unavoidable.
+//   appimage : single file the user owns; handled like portable.
 function installKind() {
   if (process.env.APPIMAGE) return "appimage";
-  return process.execPath.startsWith("/opt/") ? "pacman" : "other";
+  if (process.execPath.startsWith("/opt/") || process.execPath.startsWith("/usr/")) return "pacman";
+  try {
+    fs.accessSync(portableRoot(), fs.constants.W_OK);
+    return "portable";
+  } catch (e) {
+    return "pacman";
+  }
+}
+
+// <root>/slap-notes-<version>/app/slap-notes  ->  <root>
+function portableRoot() {
+  return path.dirname(path.dirname(path.dirname(process.execPath)));
+}
+
+// Download the release tarball, verify it, unpack it beside the current
+// version, then relaunch into it. The running install is never modified, so a
+// failure part-way through leaves the working copy untouched.
+async function selfUpdatePortable(meta) {
+  const latest = String(meta.tag_name || "").replace(/^v/, "");
+  const asset = (meta.assets || []).find((a) => /-linux-x64\.tar\.zst$/.test(a.name));
+  const sums = (meta.assets || []).find((a) => a.name === "SHA256SUMS");
+  if (!asset) return { status: "error", detail: "This release has no portable build attached." };
+
+  const root = portableRoot();
+  const tmp = path.join(os.tmpdir(), asset.name);
+
+  progress(0, "Downloading " + latest + "…");
+  await downloadTo(asset.browser_download_url, tmp, (f) => progress(f, "Downloading…"));
+
+  if (sums) {
+    progress(1, "Verifying…");
+    const text = await fetchText(sums.browser_download_url);
+    const line = text.split("\n").find((l) => l.includes(asset.name));
+    if (line) {
+      const want = line.trim().split(/\s+/)[0];
+      const got = await sha256Of(tmp);
+      if (want !== got) {
+        try { fs.unlinkSync(tmp); } catch (e) {}
+        return { status: "error", detail: "Checksum did not match. Download discarded." };
+      }
+    }
+  }
+
+  progress(1, "Unpacking…");
+  const ok = await new Promise((resolve) => {
+    const p = spawn("tar", ["-I", "zstd", "-xf", tmp, "-C", root], { stdio: "ignore" });
+    p.on("close", (code) => resolve(code === 0));
+    p.on("error", () => resolve(false));
+  });
+  try { fs.unlinkSync(tmp); } catch (e) {}
+  if (!ok) return { status: "error", detail: "Could not unpack the update." };
+
+  const next = path.join(root, "slap-notes-" + latest, "app", "slap-notes");
+  if (!fs.existsSync(next)) return { status: "error", detail: "Unpacked build looks wrong." };
+  try { fs.chmodSync(next, 0o755); } catch (e) {}
+
+  progress(1, "Restarting…");
+  setTimeout(() => { app.relaunch({ execPath: next }); app.exit(0); }, 600);
+  return { status: "installed" };
 }
 
 function httpsGetFollow(url, onResponse, onError) {
@@ -283,15 +346,15 @@ function progress(pct, label) {
 
 async function downloadAndInstallUpdate() {
   const kind = installKind();
-  if (kind !== "pacman") {
-    // Nothing safe to do automatically; send them to the release instead.
-    shell.openExternal(lastReleaseUrl || WEBSITE);
-    return { status: "manual", reason: kind };
-  }
 
   try {
     progress(0, "Looking for the latest release…");
     const meta = JSON.parse(await fetchText("https://api.github.com/repos/" + REPO + "/releases/latest"));
+
+    // Portable and AppImage installs live in the user's own space, so they can
+    // update with no password at all.
+    if (kind === "portable" || kind === "appimage") return await selfUpdatePortable(meta);
+
     const assets = meta.assets || [];
     const pkg = assets.find((a) => /\.pkg\.tar\.zst$/.test(a.name));
     const sums = assets.find((a) => a.name === "SHA256SUMS");
@@ -337,7 +400,13 @@ async function downloadAndInstallUpdate() {
 // stays in the main process alongside the code that actually performs the
 // update, and cannot be broken by a change to the app's own UI.
 function showUpdateBanner(latest, url) {
-  const d = { latest: latest, url: url, current: app.getVersion(), canInstall: installKind() === "pacman" };
+  const kind = installKind();
+  const d = {
+    latest: latest, url: url, current: app.getVersion(),
+    canInstall: true,
+    // Only a system install has to ask for a password.
+    needsAuth: kind === "pacman",
+  };
   runInPage(
     "(function(d){" +
     "if(document.querySelector('[data-slap-update]'))return;" +
@@ -345,7 +414,7 @@ function showUpdateBanner(latest, url) {
       "border:1px solid #3f3f46;border-left:3px solid #a3e635;border-radius:10px;padding:13px 15px;" +
       "font:13px/1.5 system-ui,-apple-system,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.5)';" +
     "var b=document.createElement('div');b.setAttribute('data-slap-update','');b.style.cssText=css;" +
-    "var sub=d.canInstall?'Download and install it now.':'Open the release to update.';" +
+    "var sub=d.needsAuth?'Installs with one password prompt.':'One click. No password needed.';" +
     "b.innerHTML='<div style=\"font-weight:600;color:#a3e635\">Slap Notes '+d.latest+' is out</div>'+" +
       "'<div style=\"color:#a1a1aa;margin:3px 0 10px\">You have '+d.current+'. '+sub+'</div>'+" +
       "'<div data-bar style=\"display:none;height:5px;background:#27272a;border-radius:3px;overflow:hidden;margin-bottom:9px\">'+" +
