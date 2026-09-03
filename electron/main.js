@@ -241,7 +241,7 @@ async function selfUpdatePortable(meta) {
 
   if (sums) {
     progress(1, "Verifying…");
-    const text = await fetchText(sums.browser_download_url);
+    const text = await fetchText(sums.browser_download_url, ACCEPT_ASSET);
     const line = text.split("\n").find((l) => l.includes(asset.name));
     if (line) {
       const want = line.trim().split(/\s+/)[0];
@@ -271,14 +271,20 @@ async function selfUpdatePortable(meta) {
   return { status: "installed" };
 }
 
-function httpsGetFollow(url, onResponse, onError) {
+// The API and the asset downloads need different Accept headers: the API
+// rejects application/octet-stream with a 415, and its error body is valid
+// JSON, so parsing it as a release silently yields a release with no assets.
+const ACCEPT_API = "application/vnd.github+json";
+const ACCEPT_ASSET = "application/octet-stream";
+
+function httpsGetFollow(url, onResponse, onError, accept) {
   const req = https.get(
     url,
-    { headers: { "User-Agent": "slap-notes/" + app.getVersion(), Accept: "application/octet-stream" } },
+    { headers: { "User-Agent": "slap-notes/" + app.getVersion(), Accept: accept || ACCEPT_API } },
     (res) => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume();                       // GitHub redirects release assets to a CDN
-        return httpsGetFollow(res.headers.location, onResponse, onError);
+        return httpsGetFollow(res.headers.location, onResponse, onError, accept);
       }
       onResponse(res);
     }
@@ -307,7 +313,8 @@ function downloadTo(url, dest, onProgress) {
         file.on("finish", () => file.close(() => resolve()));
         file.on("error", reject);
       },
-      reject
+      reject,
+      ACCEPT_ASSET
     );
   });
 }
@@ -322,7 +329,7 @@ function sha256Of(file) {
   });
 }
 
-function fetchText(url) {
+function fetchText(url, accept) {
   return new Promise((resolve, reject) => {
     httpsGetFollow(
       url,
@@ -330,9 +337,16 @@ function fetchText(url) {
         let b = "";
         res.setEncoding("utf8");
         res.on("data", (c) => (b += c));
-        res.on("end", () => resolve(b));
+        res.on("end", () => {
+          // Do not hand a 4xx body back to JSON.parse as if it were a release.
+          if (res.statusCode !== 200) {
+            return reject(new Error("GitHub replied " + res.statusCode));
+          }
+          resolve(b);
+        });
       },
-      reject
+      reject,
+      accept
     );
   });
 }
@@ -350,6 +364,9 @@ async function downloadAndInstallUpdate() {
   try {
     progress(0, "Looking for the latest release…");
     const meta = JSON.parse(await fetchText("https://api.github.com/repos/" + REPO + "/releases/latest"));
+    if (!meta || !Array.isArray(meta.assets)) {
+      return { status: "error", detail: "Could not read the release feed." };
+    }
 
     // Portable and AppImage installs live in the user's own space, so they can
     // update with no password at all.
@@ -367,7 +384,7 @@ async function downloadAndInstallUpdate() {
     // Verify before handing anything to pacman.
     if (sums) {
       progress(1, "Verifying…");
-      const text = await fetchText(sums.browser_download_url);
+      const text = await fetchText(sums.browser_download_url, ACCEPT_ASSET);
       const line = text.split("\n").find((l) => l.includes(pkg.name));
       if (line) {
         const want = line.trim().split(/\s+/)[0];
