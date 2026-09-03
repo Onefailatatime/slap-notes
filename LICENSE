@@ -1,0 +1,59 @@
+Slap Notes — End User License Agreement
+Copyright (c) 2026 FunnelFix. All rights reserved.
+
+By installing or using Slap Notes ("the Software") you agree to this License.
+
+1. GRANT OF LICENSE
+   You are granted a personal, non-exclusive, worldwide, royalty-free license
+   to install and use the Software on any number of devices you own or control,
+   for personal or commercial purposes, at no charge.
+
+2. REDISTRIBUTION AND PACKAGING
+   You may redistribute the Software provided it is the complete, unmodified
+   release as published by FunnelFix, this License is included, and no fee is
+   charged for the Software itself. Packaging the unmodified Software for a
+   Linux distribution or package repository — including building it into a
+   distribution package and signing that package — is expressly permitted.
+
+3. RESTRICTIONS
+   You may not:
+   (a) modify, adapt, translate, or create derivative works of the Software;
+   (b) reverse engineer, decompile, or disassemble the Software, except to the
+       extent applicable law expressly permits despite this limitation;
+   (c) remove or alter any copyright, trademark, or attribution notices;
+   (d) sell, rent, lease, or sublicense the Software; or
+   (e) use the FunnelFix or Slap Notes names or logos to endorse or promote
+       products derived from or bundled with the Software without permission.
+
+4. YOUR CONTENT
+   The Software is local-first: your notes are stored on your own device.
+   FunnelFix claims no ownership of, and no license to, anything you write with
+   the Software, and the Software transmits your notes to no one. If you enable
+   the optional AI research agent by supplying your own API key, the notes you
+   choose to send are transmitted to that provider under your own agreement
+   with them.
+
+5. THIRD-PARTY COMPONENTS
+   The Software includes third-party components — including Electron, Chromium,
+   and the open-source packages listed in its manifest — which remain licensed
+   under their own terms. Their license texts are distributed with the Software
+   (see LICENSE.electron.txt and LICENSES.chromium.html in the install
+   directory). Nothing in this License limits your rights under those terms.
+
+6. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. YOU ARE RESPONSIBLE
+   FOR MAINTAINING YOUR OWN BACKUPS OF YOUR NOTES.
+
+7. LIMITATION OF LIABILITY
+   IN NO EVENT SHALL FUNNELFIX OR THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
+   CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT,
+   OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR
+   THE USE OR OTHER DEALINGS IN THE SOFTWARE, INCLUDING ANY LOSS OF DATA.
+
+8. TERMINATION
+   This License terminates automatically if you breach any of its terms. On
+   termination you must stop using the Software and delete all copies.
+
+Contact: https://slapnotes.com
