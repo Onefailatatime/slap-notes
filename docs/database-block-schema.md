@@ -215,6 +215,45 @@ Hub page (once the real app can render these blocks):
 After the private source ships `type: "database"`, paste fragments like this
 into `~/.config/slap-notes/workspace.json` (or the hub page’s `blocks` array).
 
+## Welcome page how-to (required)
+
+Ship this on the **default first-open note** in the private source (the
+“Welcome to Slap Notes” template), not as a one-off `workspace.json` patch.
+Every fresh install and reset must see it.
+
+Look for the seed constant or markdown the app uses today — names like
+`WELCOME_PAGE`, `seedPages`, `defaultWorkspace`, `exampleNotes`, or a
+`welcome.md` / welcome blocks array — and add a dedicated section there.
+
+Keep it roughly half a screen: heading, one short teaching line, scannable
+bullets. Match the existing welcome voice (friendly, command-first, no
+marketing dump). Do not add Jessyka’s private brand copy.
+
+### Ready-to-paste copy
+
+```markdown
+## Databases
+
+A database is a living list — typed properties, a Status select, and a Board —
+not a plain `/table` of text cells.
+
+- Type `/database` (or slash menu → **Database**) to drop one in.
+- Click **+ New** to add a row. Click **Status** to move it along the pipeline.
+- Switch **Table ↔ Board** in the view bar. On the Board, drag a card to change Status.
+- Add or rename properties from the header (Status, Deadline, Type, checkbox…).
+- Click a row’s name to open its linked page when you need long-form notes.
+- For a Personal Brand / Hart-style hub, start empty databases for Ideas, Production, and Tasks.
+```
+
+Suggested block mapping if the welcome page is stored as blocks:
+
+1. `h2` — `Databases`
+2. `text` — the one-line “living list vs plain table” sentence
+3. `bullet` × 6 — the steps above
+
+Place it with the other “how to use Slap Notes” sections (near `/table`,
+slash menu, or blocks), not buried in example notes the user is told to delete.
+
 ## Out of scope for v1
 
 Formulas, rollups, and relations between databases.
